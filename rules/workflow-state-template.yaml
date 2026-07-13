@@ -8,85 +8,149 @@ workflow:
   last_updated: <ISO-8601>
   current_stage: <env-check|stage1|stage1.3|stage1.5|stage1.6|stage2|stage2.7|stage3|done>
   status: <running|paused_at_gate|failed|completed>
+  mode: <full|quick>  # full=10-stage pipeline, quick=dynamic stage trimming by project type
 
 project_type: <microservice|monolith|frontend-only|api-only>
 
-tech_stack:
-  backend: java-spring-boot              # java-spring-boot / go-gin / node-nestjs / python-fastapi
-  frontend: react-next                   # react-next / vue-nuxt
-  database: postgresql                   # postgresql / mysql / sqlite / mongodb
+# Quick mode stage trimming rules:
+#   frontend-only: skip backend_arch, security (arch level), backend modules in stage3
+#   api-only: skip prototype, frontend_arch, frontend code generation
+#   microservice: skip product_design (assumed aligned with product team)
+#   monolith: full pipeline (default)
+quick_mode_trim:
+  frontend-only:
+    skipped_stages: [product_design, backend_arch, backend_code_generation, security_arch]
+    skipped_gates: [gate2_design]
+  api-only:
+    skipped_stages: [prototype, frontend_arch, frontend_code_generation]
+    skipped_gates: []
+  microservice:
+    skipped_stages: [product_design]
+    skipped_gates: [gate2_design]
+  monolith:
+    skipped_stages: []
+    skipped_gates: []
 
-# Sub-skill configuration. Edit this section to swap a sub-skill mid-pipeline.
+# Sub-skill configuration with version locking.
+# Each skill has a locked version (commit hash or tag) for reproducibility.
 skills:
   requirement:
     skill_id: brainstorming
     type: community
     source: https://github.com/obra/superpowers/tree/main/skills/brainstorming
+    version: null  # locked at env-check time, e.g. "abc1234" or "v1.2.0"
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null  # true/false/null
   product_design:
     skill_id: ui-ux-pro-max
     type: community
     source: https://github.com/nextlevelbuilder/skills
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   prd:
     skill_id: prd-development
     type: community
     source: https://github.com/dingxingkai/pm-skills/tree/main/skills/prd-development
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   prototype:
     skill_id: design-taste-frontend
     type: community
     source: https://github.com/Leonxlnx/taste-skill
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   frontend_arch:
     skill_id: frontend-design
     type: community
     source: https://github.com/anthropics/skills/tree/main/frontend-design
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   backend_arch:
     skill_id: built-in
     type: built-in
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   test_case:
     skill_id: test-driven-development
     type: community
     source: https://github.com/obra/superpowers/tree/main/skills/test-driven-development
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   security:
     skill_id: security-and-hardening
     type: community
     source: (built-in opencode skill)
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   code_generation:
     skill_id: executing-plans
     type: community
     source: https://github.com/obra/superpowers/tree/main/skills/executing-plans
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
   cross_review:
     skill_id: doubt-driven-development
     type: community
     source: https://github.com/obra/superpowers/tree/main/skills/doubt-driven-development
+    version: null
     fallback: built-in-chat
     alternatives: []
     available: null
+    health_check_passed: null
+  parallel_dispatch:
+    skill_id: dispatching-parallel-agents
+    type: community
+    source: https://github.com/obra/superpowers/tree/main/skills/dispatching-parallel-agents
+    version: null
+    fallback: sequential
+    alternatives: []
+    available: null
+    health_check_passed: null
+
+# Tech Stack Configuration.
+tech_stack:
+  backend: java-spring-boot              # java-spring-boot / go-gin / node-nestjs / python-fastapi
+  frontend: react-next                   # react-next / vue-nuxt
+  database: postgresql                   # postgresql / mysql / sqlite / mongodb
+
+# Write path isolation: each artifact has an allowed write directory.
+# Sub-agents MUST NOT write outside these paths.
+write_paths:
+  requirement: docs/00-requirement/
+  product_design: docs/01-product/
+  prd: docs/02-prd/
+  prototype: docs/03-prototype/
+  frontend_arch: docs/04-frontend/
+  backend_arch: docs/05-backend/
+  test_case: docs/06-test/
+  security_arch: docs/07-review/
+  generated_code: .  # Stage 3 writes to project root
 
 # Environment check results (base check + tech-specific check + code quality tools)
 env_check:
@@ -106,6 +170,7 @@ skill_check:
   passed: false
   unavailable_skills: []
   fallback_required: []
+  health_checks: {}  # skill_id -> {passed: bool, error: string|null}
 
 # Tech stack recommendation (generated during Stage 1.5)
 tech_stack_recommendation:
@@ -171,14 +236,6 @@ artifacts:
     generated_by: null
     generated_at: null
     extra:
-      openapi: docs/05-backend/openapi.yaml
-  test_case:
-    path: docs/06-test/cases-v1.md
-    version: null
-    status: null
-    generated_by: null
-    generated_at: null
-    extra:
       smoke_dir: docs/06-test/smoke/
   security_review:
     path: docs/07-review/review-v1.md
@@ -205,7 +262,11 @@ gates:
     status: pending
     confirmed_at: null
     notes: null
-  gate5_security:
+  gate5_security_arch:
+    status: pending
+    confirmed_at: null
+    notes: null
+  gate6_security_code:
     status: pending
     confirmed_at: null
     notes: null
@@ -223,6 +284,9 @@ stage2:
       depends_on: [prd]
       status: pending         # pending | running | completed
       completed_tasks: []
+      git_branches:
+        prototype: null       # e.g. "fw-prototype-<uuid>"
+        backend_arch: null    # e.g. "fw-backend-<uuid>"
     group_b:
       name: "Frontend Architecture"
       tasks: [frontend_arch]
@@ -356,6 +420,20 @@ stage_execution:
     timeout_triggered: false
     skipped: false
 
+# Security review: split into two layers
+security_review:
+  arch_review:
+    stage: stage2.7
+    status: pending
+    findings: []
+    passed: null
+  code_review:
+    stage: stage3.post_generation
+    status: pending
+    scanner: null  # sonarqube / semgrep / bandit / null
+    findings: []
+    passed: null
+
 # Fallback log: when a sub-skill fails and we fall back to built-in Chat
 fallbacks: []
 # Example:
@@ -382,7 +460,7 @@ execution_log: []
 #   stage: stage1
 #   activity: "Stage started"
 #   duration_ms: null
-#   sub_skill: ears-requirement
+#   sub_skill: brainstorming
 #   details: "Requirement confirmation initiated"
 #   metadata:
 #     workflow_id: "<uuid>"

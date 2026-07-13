@@ -34,6 +34,81 @@ required_sections:
       - executable: true  # 必须可执行
     location: docs/06-test/smoke/
 
+    # Execution format: defines how smoke cases are actually run.
+    # The format is determined by the backend tech stack (Stage 1.5).
+    execution_format:
+      description: "How smoke cases are executed in Stage 3"
+      supported_formats:
+        http_bash:
+          description: "curl-based bash script, works for any HTTP API"
+          runner: bash
+          example: |
+            #!/usr/bin/env bash
+            set -euo pipefail
+            BASE_URL="${BASE_URL:-http://localhost:8080}"
+            
+            # TC-S-001: POST /api/users
+            response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/users" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"test","email":"test@example.com"}')
+            status=$(echo "$response" | tail -1)
+            body=$(echo "$response" | head -1)
+            if [ "$status" != "201" ]; then
+              echo "FAIL TC-S-001: expected 201, got $status"
+              exit 1
+            fi
+            echo "$body" | jq -e '.id' > /dev/null || { echo "FAIL: missing id field"; exit 1; }
+            echo "PASS TC-S-001"
+        
+        http_python:
+          description: "Python requests-based script"
+          runner: python3
+          example: |
+            import requests, json, sys
+            
+            BASE_URL = "${BASE_URL:-http://localhost:8080}"
+            
+            # TC-S-001: POST /api/users
+            resp = requests.post(f"{BASE_URL}/api/users", json={
+                "name": "test",
+                "email": "test@example.com"
+            })
+            assert resp.status_code == 201, f"Expected 201, got {resp.status_code}"
+            data = resp.json()
+            assert "id" in data, "Missing 'id' in response"
+            print("PASS TC-S-001")
+        
+        playwright:
+          description: "Browser-based end-to-end smoke test via Playwright"
+          runner: npx playwright
+          example: |
+            // smoke.test.ts
+            import { test, expect } from '@playwright/test';
+            
+            test('TC-S-001: Create user via UI', async ({ page }) => {
+              await page.goto('/users/create');
+              await page.fill('[name="name"]', 'test');
+              await page.fill('[name="email"]', 'test@example.com');
+              await page.click('button[type="submit"]');
+              await expect(page.locator('[data-testid="toast-success"]')).toBeVisible();
+            });
+        
+        rest_assured:
+          description: "Java REST Assured test"
+          runner: mvn test
+          example: |
+            @Test
+            void tcS001_createUser() {
+                given()
+                    .contentType(ContentType.JSON)
+                    .body(new CreateUserRequest("test", "test@example.com"))
+                .when()
+                    .post("/api/users")
+                .then()
+                    .statusCode(201)
+                    .body("id", notNullValue());
+            }
+
   - id: coverage_matrix
     name: 覆盖矩阵
     description: 用例与 PRD 需求的映射关系
@@ -55,3 +130,10 @@ validation_rules:
   - "Every P0 feature in PRD must have at least 1 functional_case"
   - "Every core_scenario in requirement must have at least 1 smoke_case"
   - "coverage_matrix must map all P0 requirements to case_ids"
+  - "smoke_cases.execution_format must match the selected tech stack backend"
+
+# Tech stack to default execution format mapping:
+#   java-spring-boot  -> rest_assured
+#   go-gin            -> http_bash (or custom go test)
+#   node-nestjs       -> http_bash (or playwright for full e2e)
+#   python-fastapi    -> http_python

@@ -9,9 +9,9 @@ A meta-skill that orchestrates a complete delivery pipeline from one-line idea t
 │                       Flow Weaver Skill                          │
 ├─────────────────────────────────────────────────────────────────┤
 │  SKILL.md (Main definition)                                     │
-│  ├── 14 Rules (govern pipeline behavior)                       │
-│  ├── 10 Stages (env-check → Stage 1-3 → delivery)              │
-│  └── Gate confirmation points                                  │
+│  ├── 14+ Rules (govern pipeline behavior)                      │
+│  ├── 10+ Stages (env-check → Stage 1-3 → delivery)             │
+│  └── 7 Gate confirmation points                                │
 ├─────────────────────────────────────────────────────────────────┤
 │  rules/ (Detailed rule implementations)                         │
 │  ├── env-check.md              # Environment & skill pre-check  │
@@ -19,6 +19,7 @@ A meta-skill that orchestrates a complete delivery pipeline from one-line idea t
 │  ├── retry-policy.md           # Rollback & retry rules         │
 │  ├── logging.md                # Execution log & audit rules    │
 │  ├── progress-visualization.md # Progress dashboard rules       │
+│  ├── timeout-retry-config.yaml # Per-stage timeout thresholds   │
 │  ├── progress-template.html    # HTML dashboard template        │
 │  └── progress-template.json    # JSON data template             │
 ├─────────────────────────────────────────────────────────────────┤
@@ -27,13 +28,27 @@ A meta-skill that orchestrates a complete delivery pipeline from one-line idea t
 │  ├── product-design-schema.yaml# Product design                 │
 │  ├── prd-schema.yaml           # PRD                            │
 │  ├── prototype-schema.yaml     # UI prototype                   │
-│  ├── frontend-arch-schema.yaml # Frontend architecture           │
-│  ├── backend-arch-schema.yaml  # Backend architecture            │
-│  └── test-case-schema.yaml     # Test cases                     │
+│  ├── frontend-arch-schema.yaml # Frontend architecture          │
+│  ├── backend-arch-schema.yaml  # Backend architecture           │
+│  └── test-case-schema.yaml     # Test cases (+ execution format)│
 ├─────────────────────────────────────────────────────────────────┤
 │  checklists/ (Gate validation checklists)                       │
-│  ├── gate4-artifacts.md        # Stage 2 artifact validation   │
+│  ├── gate1-requirement.md      # Requirement sign-off          │
+│  ├── gate2-design.md           # Product design sign-off       │
+│  ├── gate3-prd.md              # PRD sign-off (PRD only)       │
+│  ├── gate4-artifacts.md        # Stage 2 artifacts batch       │
+│  ├── gate5-security-arch.md    # Architecture security review  │
+│  ├── gate6-security-code.md    # Code-level security scan      │
 │  └── final-gate.md             # Final delivery validation     │
+├─────────────────────────────────────────────────────────────────┤
+│  templates/ (Project scaffolds per tech stack)                  │
+│  ├── backend-spring-boot/      # Java 17 + Spring Boot 3.x     │
+│  ├── backend-go-gin/           # Go 1.21+ + Gin                │
+│  ├── backend-nestjs/           # Node.js + NestJS              │
+│  ├── backend-fastapi/          # Python + FastAPI              │
+│  ├── frontend-react-next/      # React + Next.js               │
+│  ├── frontend-vue-nuxt/        # Vue 3 + Nuxt 3                │
+│  └── openapi-default.yaml      # Empty OpenAPI 3.x spec        │
 ├─────────────────────────────────────────────────────────────────┤
 │  rules/workflow-state-template.yaml                             │
 │  └── Single source of truth for pipeline state                  │
@@ -49,123 +64,73 @@ A meta-skill that orchestrates a complete delivery pipeline from one-line idea t
 | `/rules/` | env-check.md | Environment and sub-skill pre-check rules |
 | `/rules/` | change-propagation.md | Stale artifact propagation and dependency rules |
 | `/rules/` | retry-policy.md | Rollback, retry, and error handling rules |
-| `/rules/` | timeout-retry-config.yaml | Per-stage timeout thresholds and fallback config |
 | `/rules/` | logging.md | Execution log format, audit requirements |
 | `/rules/` | progress-visualization.md | Progress dashboard generation rules |
+| `/rules/` | timeout-retry-config.yaml | Per-stage timeout thresholds and fallback config |
 | `/rules/` | progress-template.html | Real-time progress dashboard template |
 | `/rules/` | progress-template.json | Dashboard data template |
 | `/schemas/` | 7 *.yaml | Per-artifact validation schemas |
-| `/checklists/` | gate4-artifacts.md | Stage 2 artifact validation checklist |
-| `/checklists/` | final-gate.md | Final delivery validation checklist |
+| `/checklists/` | 7 *.md | Gate validation checklists |
+| `/templates/` | 8 dirs/files | Project scaffolds per tech stack |
+| `/rules/workflow-state-template.yaml` | State template | Single source of truth |
 
-## Feature Matrix
+## Features
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Open-Source Sub-skills** | ✅ | All stages delegate to real open-source skills |
-| **Multi Tech Stack** | ✅ | Java/Go/Node/Python backend, React/Vue frontend |
-| **Parallel Execution** | ✅ | Stage 2 Group A/B/C parallel groups via dispatching-parallel-agents |
-| **Progress Visualization** | ✅ | Real-time dashboard with module-level progress |
-| **Project Type Templates** | ✅ | Microservice/Monolith/Frontend-only/API-only |
-| **Security Review** | ✅ | Stage 2.7 using security-and-hardening skill |
-| **Cross-Review** | ✅ | Stage 3 pre-delivery using doubt-driven-development |
-| **Smart Tech Stack Recommendation** | ✅ | AI-powered recommendation based on requirements |
-| **Cost & Risk Assessment** | ✅ | Stage 1.6 development cost and risk evaluation |
+| Feature | Description |
+|---------|-------------|
+| **Two Modes** | Full (all stages) or Quick (trimmed by project type) |
+| **Open-Source Sub-skills** | All stages delegate to real open-source skills |
+| **Multi Tech Stack** | Java/Go/Node/Python backend, React/Vue frontend |
+| **Parallel Execution** | Stage 2 parallel groups with git-branch isolation |
+| **Version Locking** | Sub-skill versions recorded and health-checked |
+| **Write-Path Isolation** | Sub-agents restricted to assigned directories |
+| **Two-Layer Security** | Architecture review (Gate 5) + Code scanning (Gate 6) |
+| **Clear Gate Boundaries** | Gate 3 = PRD only; Gate 4 = all Stage 2 artifacts |
+| **Smoke Test Formats** | Auto-selected per tech stack (curl/bash/Python/REST-Assured) |
+| **Project Templates** | Buildable skeletons for each tech stack combination |
+| **Progress Visualization** | Real-time HTML dashboard with stage timeline |
+| **Retry & Rollback** | 3-level failure handling with configurable timeouts |
+| **Audit Trail** | Execution log, iteration history, fallback tracking |
 
-## Pipeline Stages
+## Pipeline Flow
 
 ```
-[env-check] → Stage 1 (Brainstorming) → Gate 1
-    → Stage 1.3 (Project Type) → Stage 1.5 (Tech Stack)
-    → Stage 1.6 (Assessment) → Stage 2 (Artifacts)
-        → ① product_design (ui-ux-pro-max) → Gate 2
-        → ② prd (prd-development) → Gate 3
-        → Group A: prototype (design-taste-frontend) + backend_arch (built-in)
-        → Group B: frontend_arch (frontend-design)
-        → Group C: test_case (test-driven-development) → Gate 4
-        → 2.7 Security Review (security-and-hardening) → Gate 5
-    → Stage 3 (Code + Smoke Test + Cross-Review) → [Final Gate] → Deliver
+env-check → Stage 1 → Gate 1 → Stage 1.3 → Stage 1.5 → [Stage 1.6]
+  → Stage 2.① → Gate 2 → Stage 2.② → Gate 3
+  → Stage 2 Group A → Stage 2 Group B → Stage 2 Group C → Gate 4
+  → Stage 2.7 Security (Arch) → Gate 5
+  → Stage 3 Code Gen + Smoke Test
+  → Security (Code) → Gate 6
+  → Cross-Review → Final Gate → Deliver
 ```
 
-## Change Log
+`[Stage 1.6]` = cost & risk assessment (skippable)
 
-### v3.0 - Open-Source Refactoring
-- Renamed to Flow Weaver (was: vibe-coding-workflow)
-- All sub-skills replaced with real open-source skills (obra/superpowers, anthropics, nextlevelbuilder, pm-skills, Leonxlnx)
-- Added Stage 2.7 Security Review (security-and-hardening)
-- Added cross-review before final gate (doubt-driven-development)
-- Removed incremental build support; replaced with sequential re-generation
-- Simplified schemas, checklists, logging, and change-propagation rules
+## Quick Mode
 
-### v1.0 - Initial Release
-- Basic pipeline flow (env-check → Stage 1-3 → delivery)
-- Single tech stack (Java Spring Boot + React)
-- Core rules for stale propagation and rollback
+Automatically trims stages based on project type:
 
-### v1.1 - Sub-skill Enhancement
-- Structured skill configuration (skill_id, fallback, alternatives, type)
-- Environment pre-check with tech-stack-specific tools
-- Skill availability detection and fallback mechanisms
-
-### v1.2 - Multi Tech Stack
-- Support for Java/Go/Node/Python backend
-- Support for React/Vue frontend
-- Dynamic skill routing based on tech stack selection
-
-### v1.3 - Parallel Optimization
-- Stage 2 parallel groups (A: prototype+backend, B: frontend, C: tests)
-- Parallel group state tracking
-- Concurrent execution support
-
-### v1.4 - Progress Visualization
-- Real-time HTML dashboard
-- Progress percentage calculation
-- Stage timeline with color coding
-
-### v1.5 - Incremental Build
-- Change detection and scope calculation
-- Cache management with content hashes
-- Partial regeneration support
-
-### v1.6 - Project Type Templates
-- Microservice/Monolith/Frontend-only/API-only project types
-- Stage adjustment based on project type
-- Customized artifact generation per type
-
-### v1.7 - Code Quality
-- Tech-stack-specific quality tools (Checkstyle, ESLint, golangci-lint)
-- Final gate code quality validation
-- Environment tool pre-check for quality tools
-
-### v1.8 - Smart Recommendations
-- AI-powered tech stack recommendation
-- Feature-based recommendation rules
-- Context-aware suggestion engine
-
-### v1.9 - Risk Assessment
-- Development cost estimation
-- Multi-dimensional risk assessment
-- Stage 1.6 cost & risk evaluation
-
-### v2.0 - Reliability & Observability
-- Per-stage timeout configuration
-- Configurable retry policies with exponential backoff
-- Detailed execution logging and audit trail
-- Module-level progress tracking
-- Execution timing statistics
+| Type | Skips |
+|------|-------|
+| `frontend-only` | product_design, backend_arch, backend_code, security_arch |
+| `api-only` | prototype, frontend_arch, frontend_code |
+| `microservice` | product_design |
+| `monolith` | (nothing — full pipeline) |
 
 ## Usage
 
-1. **Start workflow**: Initialize from `rules/workflow-state-template.yaml`
-2. **Env check**: Run pre-checks for tools and sub-skills
-3. **Stage 1**: Brainstorm requirements with user (skill: brainstorming)
-4. **Stage 1.3**: Select project type (built-in)
-5. **Stage 1.5**: Select tech stack with AI recommendation (built-in)
-6. **Stage 1.6**: Evaluate cost and risks (built-in)
-7. **Stage 2**: Generate artifacts (parallel groups via dispatching-parallel-agents)
-8. **Stage 2.7**: Security review (skill: security-and-hardening)
-9. **Stage 3**: Generate code with TDD + cross-review (skills: executing-plans, test-driven-development, doubt-driven-development)
-10. **Final gate**: Validate and deliver
+1. **Start workflow**: `启动 flow-weaver` or `启动 flow-weaver --quick`
+2. **Initialize**: Copies `workflow-state-template.yaml` → `docs/workflow-state.yaml`
+3. **Env check**: Run pre-checks for tools and sub-skills (with health checks)
+4. **Stage 1**: Brainstorm requirements with user (skill: brainstorming)
+5. **Stage 1.3**: Select project type (built-in) → apply quick mode trimming
+6. **Stage 1.5**: Select tech stack with AI recommendation (built-in)
+7. **Stage 1.6**: Evaluate cost and risks (built-in, skippable)
+8. **Stage 2**: Generate artifacts (parallel groups with write-path isolation)
+9. **Stage 2.7**: Architecture security review
+10. **Stage 3**: Instantiate template → generate code with TDD → smoke test
+11. **Post-stage3**: Code-level security scan
+12. **Final gate**: Validate and deliver
 
 ## Dependencies
 
@@ -179,7 +144,7 @@ A meta-skill that orchestrates a complete delivery pipeline from one-line idea t
 | design-taste-frontend | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) | Stage 2.③ | UI prototype |
 | frontend-design | [anthropics/skills](https://github.com/anthropics/skills) ⭐160k | Stage 2.④ | Frontend architecture |
 | test-driven-development | [obra/superpowers](https://github.com/obra/superpowers) | Stage 2.⑥, Stage 3 | Test cases, TDD code gen |
-| security-and-hardening | opencode built-in | Stage 2.⑦ | Security review |
+| security-and-hardening | opencode built-in | Stage 2.⑦ | Architecture security review |
 | executing-plans | [obra/superpowers](https://github.com/obra/superpowers) | Stage 3 | Code generation execution |
 | doubt-driven-development | [obra/superpowers](https://github.com/obra/superpowers) | Stage 3 | Cross-review |
 | dispatching-parallel-agents | [obra/superpowers](https://github.com/obra/superpowers) | Stage 2 Group A | Parallel dispatch |
@@ -196,5 +161,63 @@ A meta-skill that orchestrates a complete delivery pipeline from one-line idea t
 ### Environment Tools
 - Node.js 18+ (frontend + smoke test)
 - JDK 17+ / Go 1.21+ / Python 3.11+ (depending on tech stack)
-- Git 2.30+ (rollback)
-- Playwright (smoke test browser automation)
+- Git 2.30+ (rollback, branch isolation)
+- Playwright (optional, for browser-based smoke tests)
+
+## Change Log
+
+### v3.1 - Improvement Patch (2026-07-13)
+- **Quick mode**: Dynamic stage trimming by project type (frontend-only, api-only, microservice, monolith)
+- **Sub-skill version locking**: Each skill records version + health check result
+- **Write-path isolation**: Sub-agents restricted to assigned directories; git-branch isolation for parallel Group A
+- **Smoke test execution format**: Auto-selected per tech stack (curl/bash, Python, REST-Assured, Playwright)
+- **Gate 3/4 separation**: Gate 3 validates PRD only; Gate 4 validates all Stage 2 artifacts
+- **Two-layer security review**: Gate 5 (architecture design) + Gate 6 (code-level static analysis)
+- **Project templates**: Buildable skeletons for 4 backends + 2 frontends + OpenAPI default
+- Added `gate5-security-arch.md` and `gate6-security-code.md` checklists
+- Added `templates/` directory with starter projects
+
+### v3.0 - Open-Source Refactoring
+- Renamed to Flow Weaver (was: vibe-coding-workflow)
+- All sub-skills replaced with real open-source skills
+- Added Stage 2.7 Security Review (security-and-hardening)
+- Added cross-review before final gate (doubt-driven-development)
+- Removed incremental build support; replaced with sequential re-generation
+
+### v1.0 - Initial Release
+- Basic pipeline flow (env-check → Stage 1-3 → delivery)
+- Single tech stack (Java Spring Boot + React)
+
+### v1.1 - Sub-skill Enhancement
+- Structured skill configuration (skill_id, fallback, alternatives, type)
+- Environment pre-check with tech-stack-specific tools
+
+### v1.2 - Multi Tech Stack
+- Support for Java/Go/Node/Python backend
+- Support for React/Vue frontend
+
+### v1.3 - Parallel Optimization
+- Stage 2 parallel groups (A: prototype+backend, B: frontend, C: tests)
+
+### v1.4 - Progress Visualization
+- Real-time HTML dashboard
+
+### v1.5 - Incremental Build
+- Change detection and scope calculation
+
+### v1.6 - Project Type Templates
+- Microservice/Monolith/Frontend-only/API-only project types
+
+### v1.7 - Code Quality
+- Tech-stack-specific quality tools
+
+### v1.8 - Smart Recommendations
+- AI-powered tech stack recommendation
+
+### v1.9 - Risk Assessment
+- Development cost estimation and multi-dimensional risk assessment
+
+### v2.0 - Reliability & Observability
+- Per-stage timeout configuration
+- Configurable retry policies with exponential backoff
+- Detailed execution logging and audit trail
