@@ -1,0 +1,91 @@
+# PRD Schema
+# Used by Gate 3 validation
+
+required_sections:
+  - id: document_info
+    name: 文档信息
+    required: true
+    fields:
+      - version
+      - author
+      - last_updated
+      - status
+
+  - id: functional_overview
+    name: 功能总览
+    description: 功能模块清单及其关系
+    required: true
+
+  - id: module_specs
+    name: 模块详细说明
+    description: 每个功能模块的详细规格
+    required: true
+    min_items: 1
+    fields_per_module:
+      - module_name
+      - description
+      - user_stories:    # 至少 1 个
+          min_items: 1
+      - acceptance_criteria:  # 至少 1 个,可验证
+          min_items: 1
+      - api_endpoints:   # 涉及的接口
+      - data_models      # 涉及的数据模型
+      - state_machine:   # 有状态的对象必须有
+          required_when: "object has lifecycle"
+
+  - id: data_models
+    name: 数据模型
+    description: 完整的数据模型定义(实体/字段/关系)
+    required: true
+    min_items: 1
+    fields_per_model:
+      - name
+      - fields:  # 每个字段含 name/type/required/description
+      - relations
+      - indexes
+
+  - id: api_contracts
+    name: 接口契约
+    description: REST API 接口定义(与 OpenAPI spec 对应)
+    required: true
+    min_items: 1
+    fields_per_api:
+      - method: [GET, POST, PUT, DELETE, PATCH]
+      - path
+      - request_schema
+      - response_schema
+      - error_codes
+
+  - id: business_rules
+    name: 业务规则
+    description: 跨模块的业务约束与规则
+    required: true
+    min_items: 1
+
+  - id: non_functional
+    name: 非功能需求
+    description: 性能/安全/可用性/兼容性要求
+    required: true
+    subfields:
+      - performance
+      - security
+      - availability
+      - compatibility
+
+optional_sections:
+  - id: state_machines
+    name: 状态机定义
+  - id: error_handling
+    name: 错误处理规范
+  - id: notification_spec
+    name: 通知/消息规范
+  - id: analytics_events
+    name: 埋点事件
+
+validation_rules:
+  - "All required_sections must be present and non-empty"
+  - "Each module in module_specs must have at least 1 user_story and 1 acceptance_criteria"
+  - "acceptance_criteria must be verifiable (含 Given/When/Then 或可测条件)"
+  - "Each data_model must define all fields with type and required flag"
+  - "api_contracts must align with data_models (引用的模型必须存在)"
+  - "If any object has lifecycle, state_machine is required for that module"

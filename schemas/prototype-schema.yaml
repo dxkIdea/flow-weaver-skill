@@ -1,0 +1,44 @@
+# UI Prototype Schema
+# Used by Gate 4 validation
+
+required_sections:
+  - id: entry_point
+    name: 入口文件
+    description: 必须存在 index.html 作为入口
+    required: true
+    file: index.html
+
+  - id: pages
+    name: 页面清单
+    description: 原型覆盖的页面列表
+    required: true
+    min_items: 1
+    fields_per_page:
+      - name
+      - path
+      - description
+      - primary_actions:  # 页面上的主要操作
+
+  - id: navigation
+    name: 导航结构
+    description: 页面间的跳转关系
+    required: true
+
+  - id: components_used
+    name: 组件清单
+    description: 使用的 UI 组件列表
+    required: true
+    min_items: 1
+
+validation_rules:
+  - "index.html must exist and be openable in browser (valid HTML)"
+  - "All pages referenced in navigation must exist as files"
+  - "Each page must be interactive (links/buttons must have href or onclick)"
+  - "Prototype must cover all core_scenarios from requirement doc"
+  - "No placeholder/lorem-ipsum content in primary user flows"
+
+quality_checks:
+  - "Responsive layout (viewport meta tag present)"
+  - "Consistent design system (colors/spacing/typography)"
+  - "All form inputs have labels"
+  - "Error states represented for key forms"

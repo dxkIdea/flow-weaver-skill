@@ -1,0 +1,57 @@
+# Product Design Schema
+# Used by Gate 2 validation
+
+required_sections:
+  - id: design_overview
+    name: 设计概述
+    description: 产品定位、设计目标、整体策略
+    required: true
+
+  - id: feature_list
+    name: 功能清单
+    description: 完整功能模块列表,含优先级
+    required: true
+    min_items: 1
+    fields_per_item:
+      - name
+      - description
+      - priority: [P0, P1, P2]
+      - mvp: [true, false]
+
+  - id: user_journey
+    name: 用户旅程
+    description: 核心用户旅程图(Mermaid flowchart)
+    required: true
+    format: mermaid
+    min_journeys: 1
+
+  - id: information_architecture
+    name: 信息架构
+    description: 功能模块/页面的层级结构(Mermaid mindmap 或 flowchart)
+    required: true
+    format: mermaid
+
+  - id: interaction_flow
+    name: 交互流程
+    description: 关键交互流程的步骤说明
+    required: true
+    min_items: 1
+
+  - id: design_decisions
+    name: 设计决策
+    description: 关键设计取舍及理由
+    required: true
+    min_items: 1
+
+optional_sections:
+  - id: competitive_analysis
+    name: 竞品分析
+  - id: design_constraints
+    name: 设计约束
+
+validation_rules:
+  - "All required_sections must be present and non-empty"
+  - "user_journey must contain valid Mermaid flowchart syntax"
+  - "information_architecture must contain valid Mermaid syntax"
+  - "Each feature in feature_list must have all fields_per_item"
+  - "At least one feature must have mvp=true"

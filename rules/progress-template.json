@@ -1,0 +1,114 @@
+{
+  "workflow": {
+    "id": "<uuid>",
+    "started_at": "<ISO-8601>",
+    "last_updated": "<ISO-8601>",
+    "current_stage": "<env-check|stage1|stage1.3|stage1.5|stage1.6|stage2|stage3|done>",
+    "status": "<running|paused_at_gate|failed|completed>",
+    "progress_percent": 0
+  },
+  "project_type": "<microservice|monolith|frontend-only|api-only>",
+  "tech_stack": {
+    "backend": "java-spring-boot",
+    "frontend": "react-next",
+    "database": "postgresql"
+  },
+  "tech_stack_recommendation": {
+    "recommended_backend": null,
+    "recommended_frontend": null,
+    "recommended_database": null,
+    "recommendation_reason": null,
+    "feature_matches": []
+  },
+  "assessment": {
+    "cost_estimate": {
+      "development_hours": null,
+      "developer_count": null,
+      "estimated_weeks": null,
+      "difficulty_level": null
+    },
+    "risk_assessment": {
+      "technical_risk": null,
+      "business_risk": null,
+      "schedule_risk": null,
+      "quality_risk": null,
+      "risks": [],
+      "mitigations": []
+    },
+    "overall_rating": null
+  },
+  "env_check": {
+    "passed": false,
+    "jdk": {"installed": false, "version": null},
+    "maven_or_gradle": {"installed": false, "tool": null},
+    "node": {"installed": false, "version": null},
+    "playwright": {"installed": false},
+    "git": {"installed": false},
+    "go": {"installed": false, "version": null},
+    "python": {"installed": false, "version": null},
+    "tech_specific": {},
+    "code_quality": {}
+  },
+  "skill_check": {
+    "passed": false,
+    "unavailable_skills": [],
+    "fallback_required": []
+  },
+  "skills": {
+    "requirement": {"skill_id": "ears-requirement", "type": "custom", "fallback": "built-in-chat", "alternatives": ["requirement-template-skill"], "available": null},
+    "product_design": {"skill_id": "dynamic-ui", "type": "built-in", "fallback": "built-in-chat", "alternatives": [], "available": null},
+    "prd": {"skill_id": "my-prd-template", "type": "custom", "fallback": "built-in-chat", "alternatives": [], "available": null},
+    "prototype": {"skill_id": "web-dev", "type": "built-in", "fallback": "built-in-chat", "alternatives": [], "available": null},
+    "frontend_arch": {"skill_id": "react-next-skill", "type": "custom", "fallback": "built-in-chat", "alternatives": ["vue-skill"], "available": null},
+    "backend_arch": {"skill_id": "spring-boot-skill", "type": "custom", "fallback": "built-in-chat", "alternatives": ["go-skill", "node-backend-skill", "python-fastapi-skill"], "available": null},
+    "test_case": {"skill_id": "webapp-testing", "type": "community", "fallback": "built-in-chat", "alternatives": [], "available": null},
+    "code_generation": {"skill_id": "ide-agent", "type": "built-in", "fallback": "built-in-chat", "alternatives": [], "available": null},
+    "smoke_test": {"skill_id": "cli + playwright-mcp", "type": "built-in+mcp", "fallback": "cli", "alternatives": [], "available": null}
+  },
+  "artifacts": {
+    "requirement": {"path": "docs/00-requirement/需求确认书.md", "version": null, "status": null, "generated_at": null, "generated_by": null},
+    "product_design": {"path": "docs/01-product/design-v1.md", "version": null, "status": null, "generated_at": null, "generated_by": null},
+    "prd": {"path": "docs/02-prd/prd-v1.md", "version": null, "status": null, "generated_at": null, "generated_by": null},
+    "prototype": {"path": "docs/03-prototype/index.html", "version": null, "status": null, "generated_at": null, "generated_by": null},
+    "frontend_arch": {"path": "docs/04-frontend/architecture-v1.md", "version": null, "status": null, "generated_at": null, "generated_by": null},
+    "backend_arch": {"path": "docs/05-backend/architecture-v1.md", "version": null, "status": null, "generated_at": null, "generated_by": null},
+    "test_case": {"path": "docs/06-test/cases-v1.md", "version": null, "status": null, "generated_at": null, "generated_by": null}
+  },
+  "gates": {
+    "gate1_requirement": {"status": "pending", "confirmed_at": null, "notes": null},
+    "gate2_design": {"status": "pending", "confirmed_at": null, "notes": null},
+    "gate3_prd": {"status": "pending", "confirmed_at": null, "notes": null},
+    "gate4_artifacts": {"status": "pending", "confirmed_at": null, "notes": null},
+    "final_delivery": {"status": "pending", "confirmed_at": null, "notes": null}
+  },
+  "stage2": {
+    "parallel_groups": {
+      "group_a": {"name": "Concurrent Prototype & Backend", "tasks": ["prototype", "backend_arch"], "depends_on": ["prd"], "status": "pending", "completed_tasks": []},
+      "group_b": {"name": "Frontend Architecture", "tasks": ["frontend_arch"], "depends_on": ["prototype"], "status": "pending", "completed_tasks": []},
+      "group_c": {"name": "Test Cases", "tasks": ["test_case"], "depends_on": ["backend_arch"], "status": "pending", "completed_tasks": []}
+    }
+  },
+  "stage3": {
+    "backend_modules": [],
+    "frontend_generated": false,
+    "smoke_test": {"attempts": 0, "last_result": null, "failures": [], "pre_smoke_tag": null}
+  },
+  "stage_execution": {
+    "env-check": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage1": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage1.3": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage1.5": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage1.6": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false, "skipped": false},
+    "stage2.1": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage2.2": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage2.group_a": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage2.group_b": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage2.group_c": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false, "skipped": false},
+    "stage3.code_generation": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false},
+    "stage3.smoke_test": {"status": "pending", "started_at": null, "completed_at": null, "duration_seconds": null, "attempts": 0, "last_error": null, "timeout_triggered": false, "skipped": false}
+  },
+  "fallbacks": [],
+  "iterations": [],
+  "incremental_cache": {},
+  "execution_log": []
+}

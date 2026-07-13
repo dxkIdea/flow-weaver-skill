@@ -1,0 +1,70 @@
+# Requirement Confirmation Schema
+# Used by Gate 1 validation
+
+required_sections:
+  - id: overview
+    name: 项目概述
+    description: 一句话描述产品/功能目标
+    required: true
+
+  - id: target_users
+    name: 目标用户
+    description: 主要用户角色及其特征
+    required: true
+    min_items: 1
+
+  - id: core_scenarios
+    name: 核心场景
+    description: 用户在什么场景下使用,解决什么问题
+    required: true
+    min_items: 1
+
+  - id: constraints
+    name: 关键约束
+    description: 性能/平台/预算/时间/合规等约束
+    required: true
+    subfields:
+      - performance
+      - platform
+      - budget
+      - timeline
+      - compliance
+
+  - id: success_criteria
+    name: 成功标准
+    description: 可量化的验收标准
+    required: true
+    min_items: 1
+    must_be_quantifiable: true
+
+  - id: non_goals
+    name: 非目标
+    description: 明确不做什么,防止 scope creep
+    required: true
+    min_items: 1
+
+  - id: mvp_scope
+    name: MVP 范围
+    description: 第一版必须包含的功能,与完整版的边界
+    required: true
+
+  - id: ears_statements
+    name: EARS 需求语句
+    description: 使用 EARS 语法结构化的需求陈述
+    required: true
+    min_items: 1
+    format: "The [system] shall [response] when [condition]."
+
+optional_sections:
+  - id: glossary
+    name: 术语表
+  - id: references
+    name: 参考资料
+  - id: open_questions
+    name: 待确认问题
+
+validation_rules:
+  - "All required_sections must be present and non-empty"
+  - "success_criteria items must contain measurable metrics (数字/百分比/时间)"
+  - "Each core_scenarios must map to at least one target_users"
+  - "mvp_scope must clearly distinguish from non_goals"

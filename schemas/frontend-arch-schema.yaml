@@ -1,0 +1,74 @@
+# Frontend Architecture Schema
+# Used by Gate 4 validation
+
+required_sections:
+  - id: tech_stack
+    name: 技术栈
+    description: 框架/库/工具链及版本
+    required: true
+    required_fields:
+      - framework: "React + Next.js"
+      - language: "TypeScript"
+      - styling: "Tailwind CSS"
+      - state_management
+      - http_client
+      - testing_framework
+
+  - id: directory_structure
+    name: 目录结构
+    description: 项目目录约定
+    required: true
+    format: tree
+
+  - id: component_tree
+    name: 组件树
+    description: 组件层级与职责划分
+    required: true
+    format: mermaid_or_tree
+    min_items: 1
+    fields_per_component:
+      - name
+      - responsibility
+      - props
+      - state: [local, global]
+
+  - id: routing
+    name: 路由设计
+    description: 页面路由与权限控制
+    required: true
+    min_items: 1
+
+  - id: state_management
+    name: 状态管理
+    description: 全局状态/服务端状态/本地状态策略
+    required: true
+    subfields:
+      - global_state
+      - server_state
+      - local_state
+
+  - id: api_integration
+    name: API 集成
+    description: 与后端 API 的对接方式,基于 PRD 的 api_contracts
+    required: true
+    min_items: 1
+
+  - id: build_and_deploy
+    name: 构建与部署
+    description: 构建流程/环境变量/部署目标
+    required: true
+
+optional_sections:
+  - id: performance_strategy
+    name: 性能策略
+  - id: accessibility
+    name: 无障碍设计
+  - id: i18n
+    name: 国际化
+
+validation_rules:
+  - "tech_stack must specify all required_fields with versions"
+  - "directory_structure must be valid tree format"
+  - "Each component must have responsibility defined"
+  - "api_integration must cover all api_contracts from PRD"
+  - "routing must cover all pages from UI prototype"

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Coding Workflow Progress</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+        .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header .meta { opacity: 0.9; font-size: 14px; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: 8px; }
+        .status-running { background: #10b981; }
+        .status-paused { background: #f59e0b; }
+        .status-completed { background: #6366f1; }
+        .status-failed { background: #ef4444; }
+        .stage-timeline { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding: 0 20px; position: relative; }
+        .stage-timeline::before { content: ''; position: absolute; top: 20px; left: 0; right: 0; height: 3px; background: #e2e8f0; z-index: 0; }
+        .stage-node { position: relative; z-index: 1; text-align: center; flex: 1; cursor: pointer; }
+        .stage-circle { width: 40px; height: 40px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: 600; font-size: 14px; transition: all 0.3s; }
+        .stage-node.completed .stage-circle { background: #10b981; color: white; }
+        .stage-node.current .stage-circle { background: #6366f1; color: white; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2); animation: pulse 2s infinite; }
+        .stage-node.pending .stage-circle { background: #e2e8f0; color: #94a3b8; }
+        .stage-node.timeout .stage-circle { background: #ef4444; color: white; }
+        .stage-label { font-size: 12px; color: #64748b; }
+        .stage-node.completed .stage-label { color: #10b981; }
+        .stage-node.current .stage-label { color: #6366f1; font-weight: 600; }
+        .stage-duration { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h3 { font-size: 16px; margin-bottom: 16px; color: #334155; }
+        .skill-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+        .skill-item:last-child { border-bottom: none; }
+        .skill-name { font-size: 14px; color: #475569; }
+        .skill-status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+        .skill-available { background: #dcfce7; color: #166534; }
+        .skill-fallback { background: #fef3c7; color: #92400e; }
+        .skill-unavailable { background: #fee2e2; color: #991b1b; }
+        .artifact-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .artifact-table th, .artifact-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+        .artifact-table th { background: #f8fafc; font-weight: 600; color: #64748b; font-size: 14px; }
+        .artifact-table tr:last-child td { border-bottom: none; }
+        .artifact-table tr:hover { background: #f8fafc; }
+        .artifact-status { font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+        .status-confirmed { background: #dcfce7; color: #166534; }
+        .status-draft { background: #dbeafe; color: #1e40af; }
+        .status-stale { background: #fef3c7; color: #92400e; }
+        .status-pending { background: #f1f5f9; color: #64748b; }
+        .env-check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+        .env-item { background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .env-icon { font-size: 20px; margin-bottom: 4px; }
+        .env-name { font-size: 12px; color: #64748b; }
+        .env-version { font-size: 14px; font-weight: 600; color: #1e293b; }
+        .env-check-pass { border-left: 4px solid #10b981; }
+        .env-check-fail { border-left: 4px solid #ef4444; }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); transition: width 0.3s; }
+        .progress-text { font-size: 14px; color: #64748b; }
+        .tech-stack { display: inline-flex; gap: 8px; margin-top: 8px; }
+        .tech-tag { background: #f1f5f9; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: #64748b; }
+        .module-progress { margin-top: 16px; }
+        .module-item { display: flex; align-items: center; margin-bottom: 8px; }
+        .module-name { width: 120px; font-size: 13px; color: #475569; }
+        .module-bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin: 0 12px; }
+        .module-fill { height: 100%; transition: width 0.3s; }
+        .module-fill.done { background: #10b981; }
+        .module-fill.running { background: #6366f1; }
+        .module-fill.pending { background: #e2e8f0; }
+        .module-fill.failed { background: #ef4444; }
+        .module-status { font-size: 12px; color: #64748b; }
+        .timing-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 16px; }
+        .timing-item { background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center; }
+        .timing-label { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+        .timing-value { font-size: 18px; font-weight: 600; color: #1e293b; }
+        .timing-value.warning { color: #f59e0b; }
+        .timing-value.error { color: #ef4444; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); } 70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); } 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+        @media (max-width: 600px) { .stage-timeline { flex-direction: column; align-items: flex-start; } .stage-timeline::before { top: 0; left: 20px; right: auto; bottom: 0; width: 3px; } .stage-node { display: flex; align-items: center; flex: none; margin-bottom: 16px; } .stage-circle { margin-right: 12px; margin-bottom: 0; } .cards { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Vibe Coding Workflow <span class="status-badge status-running" id="workflow-status">Running</span></h1>
+            <div class="meta">ID: <span id="workflow-id">N/A</span> | Started: <span id="started-at">N/A</span> | Current: <span id="current-stage">N/A</span></div>
+            <div class="tech-stack">
+                <span class="tech-tag">Backend: <span id="tech-backend">Java Spring Boot</span></span>
+                <span class="tech-tag">Frontend: <span id="tech-frontend">React Next.js</span></span>
+                <span class="tech-tag">DB: <span id="tech-database">PostgreSQL</span></span>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%" id="progress-fill"></div>
+        </div>
+        <div class="progress-text">Progress: <span id="progress-percent">0%</span></div>
+
+        <div class="stage-timeline">
+            <div class="stage-node" id="stage-env">
+                <div class="stage-circle">✓</div>
+                <div class="stage-label">Env</div>
+            </div>
+            <div class="stage-node" id="stage-1">
+                <div class="stage-circle">1</div>
+                <div class="stage-label">Requirement</div>
+            </div>
+            <div class="stage-node" id="stage-1.3">
+                <div class="stage-circle">1.3</div>
+                <div class="stage-label">Project Type</div>
+            </div>
+            <div class="stage-node" id="stage-1.5">
+                <div class="stage-circle">1.5</div>
+                <div class="stage-label">Tech Stack</div>
+            </div>
+            <div class="stage-node" id="stage-1.6">
+                <div class="stage-circle">1.6</div>
+                <div class="stage-label">Assessment</div>
+            </div>
+            <div class="stage-node" id="stage-2">
+                <div class="stage-circle">2</div>
+                <div class="stage-label">Artifacts</div>
+            </div>
+            <div class="stage-node" id="stage-3">
+                <div class="stage-circle">3</div>
+                <div class="stage-label">Code + Smoke</div>
+            </div>
+            <div class="stage-node" id="stage-done">
+                <div class="stage-circle">✓</div>
+                <div class="stage-label">Deliver</div>
+            </div>
+        </div>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Environment Check</h3>
+                <div class="env-check-grid" id="env-check-grid">
+                    <div class="env-item env-check-pass"><div class="env-icon">☕</div><div class="env-name">JDK</div><div class="env-version">17.0.8</div></div>
+                    <div class="env-item env-check-pass"><div class="env-icon">📦</div><div class="env-name">Maven</div><div class="env-version">3.9.5</div></div>
+                    <div class="env-item env-check-pass"><div class="env-icon">🟢</div><div class="env-name">Node.js</div><div class="env-version">18.18.0</div></div>
+                    <div class="env-item env-check-pass"><div class="env-icon">🌐</div><div class="env-name">Playwright</div><div class="env-version">1.42.0</div></div>
+                    <div class="env-item env-check-pass"><div class="env-icon">📥</div><div class="env-name">Git</div><div class="env-version">2.42.0</div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Sub-skill Status</h3>
+                <div id="skill-list">
+                    <div class="skill-item"><span class="skill-name">ears-requirement</span><span class="skill-status skill-available">✓ Available</span></div>
+                    <div class="skill-item"><span class="skill-name">dynamic-ui</span><span class="skill-status skill-available">✓ Built-in</span></div>
+                    <div class="skill-item"><span class="skill-name">my-prd-template</span><span class="skill-status skill-fallback">⚠ Fallback</span></div>
+                    <div class="skill-item"><span class="skill-name">web-dev</span><span class="skill-status skill-available">✓ Built-in</span></div>
+                    <div class="skill-item"><span class="skill-name">spring-boot-skill</span><span class="skill-status skill-available">✓ Available</span></div>
+                    <div class="skill-item"><span class="skill-name">webapp-testing</span><span class="skill-status skill-available">✓ Available</span></div>
+                </div>
+            </div>
+        </div>
+
+        <table class="artifact-table">
+            <thead>
+                <tr>
+                    <th>Artifact</th>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Generated At</th>
+                </tr>
+            </thead>
+            <tbody id="artifact-body">
+                <tr><td>Requirement</td><td>v1</td><td><span class="artifact-status status-confirmed">confirmed</span></td><td>2026-07-10 10:15</td></tr>
+                <tr><td>Product Design</td><td>v1</td><td><span class="artifact-status status-confirmed">confirmed</span></td><td>2026-07-10 10:30</td></tr>
+                <tr><td>PRD</td><td>v1</td><td><span class="artifact-status status-confirmed">confirmed</span></td><td>2026-07-10 11:00</td></tr>
+                <tr><td>UI Prototype</td><td>v1</td><td><span class="artifact-status status-confirmed">confirmed</span></td><td>2026-07-10 11:30</td></tr>
+                <tr><td>Frontend Architecture</td><td>v1</td><td><span class="artifact-status status-draft">draft</span></td><td>2026-07-10 11:45</td></tr>
+                <tr><td>Backend Architecture</td><td>v1</td><td><span class="artifact-status status-confirmed">confirmed</span></td><td>2026-07-10 11:35</td></tr>
+                <tr><td>Test Cases</td><td>-</td><td><span class="artifact-status status-pending">pending</span></td><td>-</td></tr>
+            </tbody>
+        </table>
+
+        <div class="card" style="margin-top: 24px;">
+            <h3>Gate Status</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <div style="font-size: 24px; font-weight: bold; color: #10b981;">✓</div>
+                    <div style="font-size: 12px; color: #64748b;">Gate 1</div>
+                    <div style="font-size: 12px; color: #10b981;">Confirmed</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <div style="font-size: 24px; font-weight: bold; color: #10b981;">✓</div>
+                    <div style="font-size: 12px; color: #64748b;">Gate 2</div>
+                    <div style="font-size: 12px; color: #10b981;">Confirmed</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <div style="font-size: 24px; font-weight: bold; color: #10b981;">✓</div>
+                    <div style="font-size: 12px; color: #64748b;">Gate 3</div>
+                    <div style="font-size: 12px; color: #10b981;">Confirmed</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: #fef3c7; border-radius: 8px;">
+                    <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">○</div>
+                    <div style="font-size: 12px; color: #64748b;">Gate 4</div>
+                    <div style="font-size: 12px; color: #f59e0b;">Pending</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: #f1f5f9; border-radius: 8px;">
+                    <div style="font-size: 24px; font-weight: bold; color: #94a3b8;">○</div>
+                    <div style="font-size: 12px; color: #64748b;">Final</div>
+                    <div style="font-size: 12px; color: #94a3b8;">Pending</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+            <h3>Stage 3 - Module Progress</h3>
+            <div id="module-progress-container">
+                <div style="text-align: center; padding: 24px; color: #94a3b8;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📦</div>
+                    <div>Stage 3 not started yet</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+            <h3>Timing Statistics</h3>
+            <div class="timing-stats" id="timing-stats">
+                <div class="timing-item">
+                    <div class="timing-label">Total Duration</div>
+                    <div class="timing-value">--</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Stage 1</div>
+                    <div class="timing-value">--</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Stage 2</div>
+                    <div class="timing-value">--</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Stage 3</div>
+                    <div class="timing-value">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fetchProgress() {
+            fetch('progress.json')
+                .then(response => response.json())
+                .then(data => {
+                    updateHeader(data);
+                    updateProgress(data);
+                    updateStages(data);
+                    updateArtifacts(data);
+                    updateGates(data);
+                    updateSkills(data);
+                    updateModuleProgress(data);
+                    updateTimingStats(data);
+                })
+                .catch(error => console.error('Failed to fetch progress:', error));
+        }
+
+        function updateHeader(data) {
+            document.getElementById('workflow-id').textContent = data.workflow?.id || 'N/A';
+            document.getElementById('started-at').textContent = data.workflow?.started_at || 'N/A';
+            document.getElementById('current-stage').textContent = data.workflow?.current_stage || 'N/A';
+            
+            const statusBadge = document.getElementById('workflow-status');
+            const status = data.workflow?.status || 'running';
+            statusBadge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            statusBadge.className = `status-badge status-${status}`;
+
+            document.getElementById('tech-backend').textContent = mapBackend(data.tech_stack?.backend);
+            document.getElementById('tech-frontend').textContent = mapFrontend(data.tech_stack?.frontend);
+            document.getElementById('tech-database').textContent = mapDatabase(data.tech_stack?.database);
+        }
+
+        function mapBackend(value) {
+            const map = { 'java-spring-boot': 'Java Spring Boot', 'go-gin': 'Go Gin', 'node-nestjs': 'Node.js NestJS', 'python-fastapi': 'Python FastAPI' };
+            return map[value] || value || 'Java Spring Boot';
+        }
+
+        function mapFrontend(value) {
+            const map = { 'react-next': 'React Next.js', 'vue-nuxt': 'Vue Nuxt' };
+            return map[value] || value || 'React Next.js';
+        }
+
+        function mapDatabase(value) {
+            const map = { 'postgresql': 'PostgreSQL', 'mysql': 'MySQL', 'sqlite': 'SQLite', 'mongodb': 'MongoDB' };
+            return map[value] || value || 'PostgreSQL';
+        }
+
+        function updateProgress(data) {
+            const stages = ['env-check', 'stage1', 'stage1.3', 'stage1.5', 'stage1.6', 'stage2', 'stage3', 'done'];
+            const currentStage = data.workflow?.current_stage || 'env-check';
+            const currentIndex = stages.indexOf(currentStage);
+            const percent = Math.round(((currentIndex + 1) / stages.length) * 100);
+            
+            document.getElementById('progress-fill').style.width = `${percent}%`;
+            document.getElementById('progress-percent').textContent = `${percent}%`;
+        }
+
+        function updateStages(data) {
+            const stageMap = {
+                'env-check': 'stage-env',
+                'stage1': 'stage-1',
+                'stage1.3': 'stage-1.3',
+                'stage1.5': 'stage-1.5',
+                'stage1.6': 'stage-1.6',
+                'stage2': 'stage-2',
+                'stage3': 'stage-3',
+                'done': 'stage-done'
+            };
+            
+            const currentStage = data.workflow?.current_stage || 'env-check';
+            const stages = ['env-check', 'stage1', 'stage1.3', 'stage1.5', 'stage1.6', 'stage2', 'stage3', 'done'];
+            
+            stages.forEach((stage, index) => {
+                const node = document.getElementById(stageMap[stage]);
+                if (!node) return;
+                
+                if (index < stages.indexOf(currentStage)) {
+                    node.className = 'stage-node completed';
+                } else if (stage === currentStage) {
+                    node.className = 'stage-node current';
+                } else {
+                    node.className = 'stage-node pending';
+                }
+            });
+        }
+
+        function updateArtifacts(data) {
+            const body = document.getElementById('artifact-body');
+            const artifacts = data.artifacts || {};
+            
+            const artifactList = [
+                { key: 'requirement', label: 'Requirement' },
+                { key: 'product_design', label: 'Product Design' },
+                { key: 'prd', label: 'PRD' },
+                { key: 'prototype', label: 'UI Prototype' },
+                { key: 'frontend_arch', label: 'Frontend Architecture' },
+                { key: 'backend_arch', label: 'Backend Architecture' },
+                { key: 'test_case', label: 'Test Cases' }
+            ];
+
+            body.innerHTML = artifactList.map(item => {
+                const artifact = artifacts[item.key];
+                const version = artifact?.version || '-';
+                const status = artifact?.status || 'pending';
+                const generatedAt = artifact?.generated_at || '-';
+                
+                return `
+                    <tr>
+                        <td>${item.label}</td>
+                        <td>${version}</td>
+                        <td><span class="artifact-status status-${status}">${status}</span></td>
+                        <td>${generatedAt}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateGates(data) {
+            const gates = data.gates || {};
+            const gateElements = ['gate1_requirement', 'gate2_design', 'gate3_prd', 'gate4_artifacts', 'final_delivery'];
+            
+            gateElements.forEach((gateKey, index) => {
+                const gate = gates[gateKey];
+                const status = gate?.status || 'pending';
+                const gateIndex = index + 1;
+                
+                const container = document.querySelectorAll('.card:last-child > div > div')[index];
+                if (!container) return;
+                
+                if (status === 'confirmed') {
+                    container.innerHTML = `
+                        <div style="font-size: 24px; font-weight: bold; color: #10b981;">✓</div>
+                        <div style="font-size: 12px; color: #64748b;">Gate ${gateIndex}</div>
+                        <div style="font-size: 12px; color: #10b981;">Confirmed</div>
+                    `;
+                    container.style.background = '#f8fafc';
+                } else if (status === 'rejected') {
+                    container.innerHTML = `
+                        <div style="font-size: 24px; font-weight: bold; color: #ef4444;">✗</div>
+                        <div style="font-size: 12px; color: #64748b;">Gate ${gateIndex}</div>
+                        <div style="font-size: 12px; color: #ef4444;">Rejected</div>
+                    `;
+                    container.style.background = '#fee2e2';
+                } else {
+                    container.innerHTML = `
+                        <div style="font-size: 24px; font-weight: bold; color: #94a3b8;">○</div>
+                        <div style="font-size: 12px; color: #64748b;">Gate ${gateIndex}</div>
+                        <div style="font-size: 12px; color: #94a3b8;">Pending</div>
+                    `;
+                    container.style.background = '#f1f5f9';
+                }
+            });
+        }
+
+        function updateSkills(data) {
+            const skills = data.skills || {};
+            const skillList = document.getElementById('skill-list');
+            
+            const skillItems = [
+                { key: 'requirement', label: 'ears-requirement' },
+                { key: 'product_design', label: 'dynamic-ui' },
+                { key: 'prd', label: 'my-prd-template' },
+                { key: 'prototype', label: 'web-dev' },
+                { key: 'backend_arch', label: 'backend-skill' },
+                { key: 'test_case', label: 'webapp-testing' }
+            ];
+
+            skillList.innerHTML = skillItems.map(item => {
+                const skill = skills[item.key];
+                const available = skill?.available;
+                
+                let statusClass = 'skill-unavailable';
+                let statusText = '✗ Unavailable';
+                
+                if (available === true) {
+                    statusClass = 'skill-available';
+                    statusText = '✓ Available';
+                } else if (available === false && skill?.fallback) {
+                    statusClass = 'skill-fallback';
+                    statusText = '⚠ Fallback';
+                }
+                
+                return `
+                    <div class="skill-item">
+                        <span class="skill-name">${item.label}</span>
+                        <span class="skill-status ${statusClass}">${statusText}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateModuleProgress(data) {
+            const container = document.getElementById('module-progress-container');
+            const modules = data.stage3?.backend_modules || [];
+            
+            if (modules.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 24px; color: #94a3b8;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">📦</div>
+                        <div>Stage 3 not started yet</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const completed = modules.filter(m => m.status === 'done').length;
+            const total = modules.length;
+            const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            container.innerHTML = `
+                <div style="margin-bottom: 12px; font-size: 14px; color: #64748b;">
+                    ${completed}/${total} modules completed (${percent}%)
+                </div>
+                <div class="module-progress">
+                    ${modules.map(module => {
+                        const status = module.status || 'pending';
+                        const fillClass = {
+                            'done': 'done',
+                            'running': 'running',
+                            'failed': 'failed'
+                        }[status] || 'pending';
+                        const fillWidth = status === 'done' ? '100%' : status === 'running' ? '50%' : '0%';
+                        
+                        return `
+                            <div class="module-item">
+                                <div class="module-name">${module.name}</div>
+                                <div class="module-bar">
+                                    <div class="module-fill ${fillClass}" style="width: ${fillWidth}"></div>
+                                </div>
+                                <div class="module-status">${status}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds || seconds < 0) return '--';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            if (mins > 60) {
+                const hours = Math.floor(mins / 60);
+                const remainingMins = mins % 60;
+                return `${hours}h ${remainingMins}m`;
+            }
+            return `${mins}m ${secs}s`;
+        }
+
+        function updateTimingStats(data) {
+            const exec = data.stage_execution || {};
+            const startedAt = new Date(data.workflow?.started_at);
+            const now = new Date();
+            const totalDuration = startedAt && !isNaN(startedAt.getTime()) 
+                ? (now - startedAt) / 1000 
+                : null;
+            
+            const stage1Duration = exec['stage1']?.duration_seconds;
+            const stage2Duration = (exec['stage2.1']?.duration_seconds || 0) + 
+                                  (exec['stage2.2']?.duration_seconds || 0) + 
+                                  (exec['stage2.group_a']?.duration_seconds || 0) + 
+                                  (exec['stage2.group_b']?.duration_seconds || 0) + 
+                                  (exec['stage2.group_c']?.duration_seconds || 0);
+            const stage3Duration = (exec['stage3.code_generation']?.duration_seconds || 0) + 
+                                  (exec['stage3.smoke_test']?.duration_seconds || 0);
+            
+            const statsContainer = document.getElementById('timing-stats');
+            statsContainer.innerHTML = `
+                <div class="timing-item">
+                    <div class="timing-label">Total Duration</div>
+                    <div class="timing-value">${formatDuration(totalDuration)}</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Stage 1</div>
+                    <div class="timing-value">${formatDuration(stage1Duration)}</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Stage 2</div>
+                    <div class="timing-value">${formatDuration(stage2Duration)}</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Stage 3</div>
+                    <div class="timing-value">${formatDuration(stage3Duration)}</div>
+                </div>
+            `;
+        }
+
+        fetchProgress();
+        setInterval(fetchProgress, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+stage_timeout_config:
+  env-check:
+    timeout_seconds: 300
+    max_retries: 1
+    retry_delay_seconds: 60
+    allow_skip: false
+    fallback_strategy: manual
+  stage1:
+    timeout_seconds: 600
+    max_retries: 2
+    retry_delay_seconds: 120
+    allow_skip: false
+    fallback_strategy: built-in-chat
+  stage1.3:
+    timeout_seconds: 120
+    max_retries: 1
+    retry_delay_seconds: 60
+    allow_skip: false
+    fallback_strategy: default-value
+  stage1.5:
+    timeout_seconds: 300
+    max_retries: 2
+    retry_delay_seconds: 120
+    allow_skip: false
+    fallback_strategy: default-value
+  stage1.6:
+    timeout_seconds: 300
+    max_retries: 1
+    retry_delay_seconds: 60
+    allow_skip: true
+    fallback_strategy: skip
+  stage2.1:
+    timeout_seconds: 900
+    max_retries: 2
+    retry_delay_seconds: 180
+    allow_skip: false
+    fallback_strategy: built-in-chat
+  stage2.2:
+    timeout_seconds: 1200
+    max_retries: 2
+    retry_delay_seconds: 180
+    allow_skip: false
+    fallback_strategy: built-in-chat
+  stage2.group_a:
+    timeout_seconds: 1800
+    max_retries: 2
+    retry_delay_seconds: 300
+    allow_skip: false
+    fallback_strategy: built-in-chat
+  stage2.group_b:
+    timeout_seconds: 900
+    max_retries: 2
+    retry_delay_seconds: 180
+    allow_skip: false
+    fallback_strategy: built-in-chat
+  stage2.group_c:
+    timeout_seconds: 900
+    max_retries: 2
+    retry_delay_seconds: 180
+    allow_skip: true
+    fallback_strategy: skip
+  stage3.code_generation:
+    timeout_seconds: 3600
+    max_retries: 3
+    retry_delay_seconds: 300
+    allow_skip: false
+    fallback_strategy: partial-generation
+  stage3.smoke_test:
+    timeout_seconds: 1800
+    max_retries: 3
+    retry_delay_seconds: 300
+    allow_skip: true
+    fallback_strategy: skip-with-warning
+
+fallback_strategies:
+  manual:
+    description: 停止流程，等待人工介入
+    action: halt
+  built-in-chat:
+    description: 使用内置聊天能力继续执行
+    action: fallback_to_builtin
+  default-value:
+    description: 使用默认值继续执行
+    action: use_default
+  skip:
+    description: 跳过当前阶段，继续后续流程
+    action: skip_stage
+  partial-generation:
+    description: 保留已生成代码，跳过失败模块
+    action: partial_continue
+  skip-with-warning:
+    description: 跳过并记录警告
+    action: skip_with_warning
+
+global_rules:
+  max_total_retries: 10
+  retry_backoff_multiplier: 1.5
+  timeout_extension_factor: 0.5
+  alert_threshold_seconds: 600

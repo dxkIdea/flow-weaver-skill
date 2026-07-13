@@ -1,0 +1,101 @@
+# Backend Architecture Schema (Java / Spring Boot)
+# Used by Gate 4 validation
+
+required_sections:
+  - id: tech_stack
+    name: 技术栈
+    description: 框架/库/版本
+    required: true
+    required_fields:
+      - language: "Java 17+"
+      - framework: "Spring Boot 3.x"
+      - build_tool: [Maven, Gradle]
+      - orm: [MyBatis, JPA/Hibernate, MyBatis-Plus]
+      - database
+      - cache
+      - messaging
+      - testing: [JUnit 5, Mockito]
+
+  - id: module_decomposition
+    name: 模块划分
+    description: 领域模块列表,Stage 3 按此逐模块生成代码
+    required: true
+    min_items: 1
+    fields_per_module:
+      - name
+      - responsibility
+      - depends_on: [other modules]
+      - entities: [data model names]
+      - api_endpoints: [list]
+      - priority: [P0, P1, P2]
+
+  - id: layering
+    name: 分层架构
+    description: controller/service/mapper(entity)/dto 分层约定
+    required: true
+    layers:
+      - controller
+      - service
+      - mapper_or_repository
+      - entity
+      - dto
+
+  - id: directory_structure
+    name: 目录结构
+    description: 包结构与模块组织方式
+    required: true
+    format: tree
+
+  - id: data_storage
+    name: 数据存储
+    description: 数据库选型/表结构/索引策略
+    required: true
+    subfields:
+      - database_type
+      - schema_design
+      - migration_strategy
+      - indexing
+
+  - id: openapi_spec
+    name: OpenAPI 规范
+    description: 完整的 OpenAPI 3.x spec,独立文件
+    required: true
+    file: openapi.yaml
+    must_be_parseable: true
+
+  - id: security
+    name: 安全设计
+    description: 认证/授权/加密/审计
+    required: true
+    subfields:
+      - authentication
+      - authorization
+      - data_encryption
+      - audit_log
+
+  - id: error_handling
+    name: 异常处理
+    description: 全局异常处理 + 错误码规范
+    required: true
+
+  - id: deployment
+    name: 部署拓扑
+    description: 部署架构/环境配置/监控
+    required: true
+    format: mermaid
+
+optional_sections:
+  - id: caching_strategy
+    name: 缓存策略
+  - id: async_processing
+    name: 异步处理
+  - id: observability
+    name: 可观测性(日志/指标/追踪)
+
+validation_rules:
+  - "tech_stack must specify all required_fields with versions"
+  - "module_decomposition must have at least 1 module with all fields_per_module"
+  - "openapi.yaml must exist and parse as valid OpenAPI 3.x"
+  - "Each module's api_endpoints must exist in openapi_spec"
+  - "Each module's entities must exist in PRD data_models"
+  - "module_decomposition order must respect depends_on (no circular deps)"

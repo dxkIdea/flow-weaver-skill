@@ -1,0 +1,57 @@
+# Test Case Schema
+# Used by Gate 4 validation
+
+required_sections:
+  - id: functional_cases
+    name: 功能测试用例
+    description: 基于 PRD 的功能测试用例
+    required: true
+    min_items: 1
+    fields_per_case:
+      - id              # 唯一编号,如 TC-F-001
+      - module          # 对应 backend_arch module
+      - title
+      - preconditions
+      - steps:          # 至少 1 步
+          min_items: 1
+      - expected_result
+      - priority: [P0, P1, P2]
+      - type: [positive, negative, boundary, edge]
+
+  - id: smoke_cases
+    name: 冒烟测试用例
+    description: 可执行的核心路径用例,Stage 3 跑这些
+    required: true
+    min_items: 1
+    fields_per_case:
+      - id              # 唯一编号,如 TC-S-001
+      - title
+      - endpoint        # 对应 openapi spec
+      - method
+      - request_payload
+      - expected_status
+      - expected_response_fields
+      - executable: true  # 必须可执行
+    location: docs/06-test/smoke/
+
+  - id: coverage_matrix
+    name: 覆盖矩阵
+    description: 用例与 PRD 需求的映射关系
+    required: true
+    fields:
+      - requirement_id
+      - case_ids: []
+
+optional_sections:
+  - id: performance_cases
+    name: 性能测试用例
+  - id: security_cases
+    name: 安全测试用例
+
+validation_rules:
+  - "All cases must have unique id"
+  - "Each functional_case must have explicit expected_result (含断言条件)"
+  - "smoke_cases must all have executable=true and reference valid endpoints"
+  - "Every P0 feature in PRD must have at least 1 functional_case"
+  - "Every core_scenario in requirement must have at least 1 smoke_case"
+  - "coverage_matrix must map all P0 requirements to case_ids"
