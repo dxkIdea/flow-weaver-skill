@@ -52,12 +52,12 @@ Stage 2: Artifact generation (parallel groups)
                                                ↓ GATE 4: Artifacts sign-off
 Stage 2.7: Security Review - Architecture Layer (security-and-hardening) → GATE 5
   ↓
-Stage 3: Code generation + smoke test (skill: executing-plans + subagent: TDD)
+Stage 3: Template instantiate → Code generation + smoke test (skill: executing-plans + subagent: TDD)
   Per-module generation → unit test per module → smoke test
   Failure handling: auto-diagnose → fix → retry (max 3) → dialog intervention
   ↓
   Post-generation: Security Review - Code Layer (static analysis) → GATE 6
-  ↓ GATE 7: Final delivery sign-off
+  ↓ Final Gate
 [Final gate] → Deliver
 ```
 
@@ -65,12 +65,12 @@ Stage 3: Code generation + smoke test (skill: executing-plans + subagent: TDD)
 
 When `workflow.mode = quick`, stages are trimmed based on `project_type`:
 
-| Project Type | Skipped Stages | Skipped Gates |
-|---|---|---|
-| `frontend-only` | product_design, backend_arch, backend_code_generation, security_arch | gate2_design |
-| `api-only` | prototype, frontend_arch, frontend_code_generation | — |
-| `microservice` | product_design | gate2_design |
-| `monolith` | (none — full pipeline) | (none) |
+| Project Type | Skipped Stages | Skipped Gates | Schema Changes |
+|---|---|---|---|
+| `frontend-only` | product_design, backend_arch, backend_code_generation, security_arch | gate2_design | test_case smoke_cases optional |
+| `api-only` | prototype, frontend_arch, frontend_code_generation | — | prototype-schema skip, frontend-arch skip |
+| `microservice` | product_design | gate2_design | prd depends on requirement (not product_design) |
+| `monolith` | (none — full pipeline) | (none) | — |
 
 User can also force quick mode: "启动 flow-weaver --quick"
 
@@ -82,10 +82,10 @@ This skill must be explicitly triggered. Never auto-invoke based on vague phrasi
 ### Rule 1: State persistence is mandatory
 Before starting any stage, read `docs/workflow-state.yaml`. After completing any stage, update it. This is the single source of truth for progress, versions, and confirmations. If the file doesn't exist, initialize it from the template in `rules/workflow-state-template.yaml`.
 
-**Resume logic:** On invocation, first check `docs/workflow-state.yaml`. If a previous run exists, offer to resume from the last unconfirmed gate rather than starting over.
+**Resume logic:** On invocation, first check `docs/workflow-state.yaml`. If a previous run exists, check `resume_checkpoint` to determine the target stage and whether prerequisites are met. Offer to resume from the last unconfirmed gate rather than starting over.
 
 ### Rule 1.5: Quick mode trimming
-After Stage 1.3 (project type selection), apply trimming rules from `workflow-state-template.yaml` to determine which stages/gates to skip. Update `workflow.mode` accordingly.
+After Stage 1.3 (project type selection), apply trimming rules from `quick_mode_trim` in the state file. Update `workflow.mode` to `quick` and apply `modified_schemas` and `modified_dependencies` to adjust validation and dependency chains accordingly.
 
 ### Rule 2: Parallel group execution with write-path isolation
 Stage 2 executes in parallel groups based on dependencies:
@@ -96,8 +96,6 @@ Stage 2 executes in parallel groups based on dependencies:
 Within each group, tasks run sequentially. Group B starts only after prototype completes. Group C starts only after backend_arch completes. Use `dispatching-parallel-agents` to dispatch Group A's independent tasks.
 
 **Write-path isolation:** Each artifact has a designated `write_paths` entry in the state file. Sub-agents MUST NOT write outside their assigned directory. Group A tasks are created on separate git branches (`fw-prototype-<uuid>`, `fw-backend-<uuid>`) and merged after completion. Conflicts are resolved by marking stale artifacts.
-
-See `rules/workflow-state-template.yaml` for parallel_group and write_paths definitions.
 
 ### Rule 3: Subagent isolation per stage
 Each stage (1, 2.①–2.⑦, 3) must be executed in an independent subagent to protect main-context window. The main session only retains:
@@ -127,11 +125,12 @@ generated_at: <ISO-8601>
 ### Rule 5: Sub-skill version locking and health check
 Each sub-skill has a `version` and `health_check_passed` field in the state file. During env-check:
 1. Record the installed version/commit hash of each community skill
-2. Run a smoke test against each skill (generate a tiny dummy artifact and validate its structure)
-3. If a skill fails health check, try `alternatives` list first, then fallback to `built-in-chat`
-4. Record all results in `skill_check.health_checks`
+2. Run the skill-specific health check defined in `rules/env-check.md` (input a dummy topic, validate output structure)
+3. Record detailed results in `skills.<key>.health_check_result`
+4. If a skill fails health check, try `alternatives` list first, then fallback to `built-in-chat`
+5. Record all results in `skill_check.health_checks`
 
-Never use a community skill without a recorded version.
+Never use a community skill without a recorded version and health check result.
 
 ### Rule 6: Smoke test execution format
 Smoke cases use the `execution_format` defined in `test-case-schema.yaml`. The format is auto-selected based on `tech_stack.backend`:
@@ -140,7 +139,7 @@ Smoke cases use the `execution_format` defined in `test-case-schema.yaml`. The f
 - `node-nestjs` → `http_bash` (or `playwright` for full e2e)
 - `python-fastapi` → `http_python`
 
-Before running smoke tests, ensure the backend is running on the expected port.
+Record the selected format in `stage3.smoke_test.execution_format`. Before running smoke tests, ensure the backend is running on the expected port.
 
 ### Rule 7: Two-layer security review
 Security review is split into two gates:
@@ -154,6 +153,34 @@ See `checklists/gate5-security-arch.md` and `checklists/gate6-security-code.md`.
 - **Gate 4** validates ALL Stage 2 artifacts batch-wise (prototype, frontend_arch, backend_arch, test_case) plus cross-artifact consistency.
 
 PRD is NOT re-checked at Gate 4.
+
+### Rule 9: Template instantiation before code generation
+Before Stage 3 code generation:
+1. Select the backend template based on `tech_stack.backend`
+2. Select the frontend template based on `tech_stack.frontend` (if not skipped by quick mode)
+3. Copy templates to the project root
+4. Copy `templates/openapi-default.yaml` to `docs/05-backend/openapi.yaml`
+5. Commit the instantiated template as baseline
+6. Record sources in `stage3.template.*` fields
+
+Template mapping:
+- `java-spring-boot` → `templates/backend-spring-boot/`
+- `go-gin` → `templates/backend-go-gin/`
+- `node-nestjs` → `templates/backend-nestjs/`
+- `python-fastapi` → `templates/backend-fastapi/`
+- `react-next` → `templates/frontend-react-next/`
+- `vue-nuxt` → `templates/frontend-vue-nuxt/`
+
+### Rule 10: Manual edit detection
+At each gate, compare artifact file hashes against the last recorded state. If a file was manually edited by the user, set `artifacts.<key>.last_modified_by_user = true` and prompt the user: "检测到手动修改，是否重新生成版本？" Options:
+- A: 保留手动修改，继续
+- B: 重新生成，覆盖手动修改
+
+### Rule 11: Execution log archival
+When `execution_log` exceeds 1000 entries, archive the oldest 500 entries to `docs/execution-log-archive.yaml` and keep the most recent 500 in the state file.
+
+### Rule 12: Resume checkpoint
+On resume, check `resume_checkpoint.target_stage` and verify all `prerequisites_met` are satisfied. If prerequisites are not met (e.g., upstream artifacts are stale), regenerate them first. Record which artifacts are stale in `resume_checkpoint.stale_artifacts`.
 
 ## Sub-Skill Registry
 
@@ -182,7 +209,7 @@ tech_stack:
 
 ## Templates (Project Scaffolds)
 
-During Stage 3, the orchestrator instantiates the appropriate template from `templates/` based on the selected tech stack:
+During Stage 3, the orchestrator instantiates the appropriate template from `templates/` based on the selected tech stack. See Rule 9 for the instantiation procedure.
 
 | Template | Purpose |
 |---|---|
@@ -194,7 +221,7 @@ During Stage 3, the orchestrator instantiates the appropriate template from `tem
 | `templates/frontend-vue-nuxt/` | Vue 3 + Nuxt 3 + TypeScript + Tailwind |
 | `templates/openapi-default.yaml` | Empty OpenAPI 3.x starter spec |
 
-Templates provide a buildable skeleton with health endpoint, standard directory structure, and stack-appropriate `.gitignore`.
+Templates provide a buildable skeleton with health endpoint, standard directory structure, and stack-appropriate `.gitignore`. See `templates/README.md` for details.
 
 ## Example Invocation
 
@@ -207,16 +234,16 @@ AI: [env-check] 检测环境...
     ✓ Node.js 18.18.0
     ✓ Playwright 1.42.0
     ✓ Git 2.42.0
-    [skill-check] 检测子技能...
-    ✓ brainstorming (obra/superpowers, v1.2.0, health OK)
-    ✓ ui-ux-pro-max (nextlevelbuilder, v3.1.0, health OK)
-    ✓ prd-development (pm-skills, abc1234, health OK)
-    ✓ design-taste-frontend (Leonxlnx, v2.0.0, health OK)
-    ✓ frontend-design (anthropics, v1.0.0, health OK)
-    ✓ test-driven-development (obra/superpowers, v4.0.0, health OK)
+    [skill-health] 子技能健康检查...
+    ✓ brainstorming (v1.2.0, health OK)
+    ✓ ui-ux-pro-max (v3.1.0, health OK)
+    ✓ prd-development (abc1234, health OK)
+    ✓ design-taste-frontend (v2.0.0, health OK)
+    ✓ frontend-design (v1.0.0, health OK)
+    ✓ test-driven-development (v4.0.0, health OK)
     ✓ security-and-hardening (built-in, health OK)
-    ✓ executing-plans (obra/superpowers, v2.1.0, health OK)
-    ✓ doubt-driven-development (obra/superpowers, v3.0.0, health OK)
+    ✓ executing-plans (v2.1.0, health OK)
+    ✓ doubt-driven-development (v3.0.0, health OK)
     
     [Stage 1] 启动 brainstorming, 基于 "团队周报自动汇总工具" 探索需求...
     [发散 → 收敛 → 需求确认书]
@@ -244,6 +271,13 @@ AI: [env-check] 检测环境...
     [Group A] dispatching-parallel-agents → 并行启动 prototype 和 backend_arch...
     [Git branches: fw-prototype-<uuid>, fw-backend-<uuid>]
     ...
+    
+    [Stage 3] 实例化模板...
+    ✓ Backend: templates/backend-spring-boot/ → project root
+    ✓ Frontend: templates/frontend-react-next/ → project root
+    ✓ OpenAPI: templates/openapi-default.yaml → docs/05-backend/openapi.yaml
+    [Git baseline committed]
+    → 逐模块生成代码...
 ```
 
 ## Important Notes

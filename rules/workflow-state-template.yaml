@@ -12,24 +12,49 @@ workflow:
 
 project_type: <microservice|monolith|frontend-only|api-only>
 
-# Quick mode stage trimming rules:
-#   frontend-only: skip backend_arch, security (arch level), backend modules in stage3
-#   api-only: skip prototype, frontend_arch, frontend code generation
-#   microservice: skip product_design (assumed aligned with product team)
-#   monolith: full pipeline (default)
+# Quick mode stage trimming rules.
+# Each type defines:
+#   skipped_stages: stages to skip entirely
+#   skipped_gates: gates to bypass
+#   modified_schemas: schemas whose validation rules are relaxed
+#   modified_dependencies: dependency chains that change
 quick_mode_trim:
   frontend-only:
     skipped_stages: [product_design, backend_arch, backend_code_generation, security_arch]
     skipped_gates: [gate2_design]
+    modified_schemas:
+      backend-arch-schema: skip_validation
+      test-case-schema: smoke_cases_optional=true
+    modified_dependencies:
+      - from: test_case
+        to: backend_arch
+        change: "test_case smoke_cases no longer depend on backend openapi.yaml"
   api-only:
     skipped_stages: [prototype, frontend_arch, frontend_code_generation]
     skipped_gates: []
+    modified_schemas:
+      prototype-schema: skip_validation
+      frontend-arch-schema: skip_validation
+    modified_dependencies:
+      - from: test_case
+        to: frontend_arch
+        change: "test_case no longer depends on frontend_arch"
+      - from: frontend_arch
+        to: prototype
+        change: "frontend_arch no longer depends on prototype"
   microservice:
     skipped_stages: [product_design]
     skipped_gates: [gate2_design]
+    modified_schemas: {}
+    modified_dependencies:
+      - from: prd
+        to: product_design
+        change: "prd no longer depends on product_design; depends on requirement directly"
   monolith:
     skipped_stages: []
     skipped_gates: []
+    modified_schemas: {}
+    modified_dependencies: {}
 
 # Sub-skill configuration with version locking.
 # Each skill has a locked version (commit hash or tag) for reproducibility.
@@ -43,6 +68,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null  # true/false/null
+    health_check_result: null  # {input: "...", expected_pattern: "...", actual: "..."}
   product_design:
     skill_id: ui-ux-pro-max
     type: community
@@ -52,6 +78,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   prd:
     skill_id: prd-development
     type: community
@@ -61,6 +88,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   prototype:
     skill_id: design-taste-frontend
     type: community
@@ -70,6 +98,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   frontend_arch:
     skill_id: frontend-design
     type: community
@@ -79,6 +108,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   backend_arch:
     skill_id: built-in
     type: built-in
@@ -87,6 +117,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   test_case:
     skill_id: test-driven-development
     type: community
@@ -96,6 +127,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   security:
     skill_id: security-and-hardening
     type: community
@@ -105,6 +137,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   code_generation:
     skill_id: executing-plans
     type: community
@@ -114,6 +147,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   cross_review:
     skill_id: doubt-driven-development
     type: community
@@ -123,6 +157,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
   parallel_dispatch:
     skill_id: dispatching-parallel-agents
     type: community
@@ -132,6 +167,7 @@ skills:
     alternatives: []
     available: null
     health_check_passed: null
+    health_check_result: null
 
 # Tech Stack Configuration.
 tech_stack:
@@ -154,13 +190,12 @@ write_paths:
 
 # Environment check results (base check + tech-specific check + code quality tools)
 env_check:
-  jdk: {installed: false, version: null}
-  maven_or_gradle: {installed: false, tool: null}
-  node: {installed: false, version: null}
-  playwright: {installed: false}
-  git: {installed: false}
-  go: {installed: false, version: null}
-  python: {installed: false, version: null}
+  base:
+    node: {installed: false, version: null}
+    npm_or_pnpm: {installed: false, tool: null}
+    playwright: {installed: false}
+    git: {installed: false}
+    passed: false
   tech_specific: {}
   code_quality: {}
   passed: false
@@ -171,6 +206,12 @@ skill_check:
   unavailable_skills: []
   fallback_required: []
   health_checks: {}  # skill_id -> {passed: bool, error: string|null}
+
+# Resume checkpoint: where to resume if workflow was interrupted
+resume_checkpoint:
+  target_stage: null
+  prerequisites_met: {}
+  stale_artifacts: []
 
 # Tech stack recommendation (generated during Stage 1.5)
 tech_stack_recommendation:
@@ -205,30 +246,35 @@ artifacts:
     status: null
     generated_by: null
     generated_at: null
+    last_modified_by_user: null  # true/false, tracks manual edits
   product_design:
     path: docs/01-product/design-v1.md
     version: null
     status: null
     generated_by: null
     generated_at: null
+    last_modified_by_user: null
   prd:
     path: docs/02-prd/prd-v1.md
     version: null
     status: null
     generated_by: null
     generated_at: null
+    last_modified_by_user: null
   prototype:
     path: docs/03-prototype/index.html
     version: null
     status: null
     generated_by: null
     generated_at: null
+    last_modified_by_user: null
   frontend_arch:
     path: docs/04-frontend/architecture-v1.md
     version: null
     status: null
     generated_by: null
     generated_at: null
+    last_modified_by_user: null
   backend_arch:
     path: docs/05-backend/architecture-v1.md
     version: null
@@ -237,12 +283,14 @@ artifacts:
     generated_at: null
     extra:
       smoke_dir: docs/06-test/smoke/
+    last_modified_by_user: null
   security_review:
     path: docs/07-review/review-v1.md
     version: null
     status: null
     generated_by: null
     generated_at: null
+    last_modified_by_user: null
 
 # Gate confirmation records
 gates:
@@ -302,6 +350,12 @@ stage2:
 
 # Stage 3 progress: per-module code generation + smoke test
 stage3:
+  template:
+    backend_source: null    # e.g. "templates/backend-spring-boot"
+    frontend_source: null   # e.g. "templates/frontend-react-next"
+    openapi_source: null    # "templates/openapi-default.yaml"
+    instantiated_at: null
+    instantiation_status: null  # pending | done | failed
   backend_modules: []   # populated from backend_arch, e.g. [{name: "user", status: "done"}, ...]
   frontend_generated: false
   smoke_test:
@@ -309,6 +363,7 @@ stage3:
     last_result: null   # pass | fail
     failures: []        # list of failed case ids
     pre_smoke_tag: null # git tag
+    execution_format: null  # http_bash | http_python | playwright | rest_assured
 
 # Stage execution tracking: timeout, retry, and timing info
 stage_execution:
@@ -402,6 +457,14 @@ stage_execution:
     attempts: 0
     last_error: null
     timeout_triggered: false
+  stage3.template_instantiation:
+    status: pending
+    started_at: null
+    completed_at: null
+    duration_seconds: null
+    attempts: 0
+    last_error: null
+    timeout_triggered: false
   stage3.code_generation:
     status: pending
     started_at: null
@@ -434,6 +497,12 @@ security_review:
     findings: []
     passed: null
 
+# Manual modification tracking: detects user edits to artifacts
+manual_edits:
+  detected: false
+  artifacts: []  # list of artifact keys that were manually edited
+  last_check: null
+
 # Fallback log: when a sub-skill fails and we fall back to built-in Chat
 fallbacks: []
 # Example:
@@ -453,6 +522,7 @@ iterations: []
 #   timestamp: <ISO-8601>
 
 # Execution log: detailed audit trail of all workflow activities
+# When exceeding 1000 entries, archive oldest 500 to docs/execution-log-archive.yaml
 execution_log: []
 # Example:
 # - timestamp: "<ISO-8601>"
